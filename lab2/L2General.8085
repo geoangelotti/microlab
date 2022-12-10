@@ -1,0 +1,275 @@
+ARCH:
+	IN 10H
+	CALL DISP_INIT	;Set up 7 Segment Displays
+WAITFR:
+	CALL KIND		;Wait for input from Keyboard
+	CPI 80H		;Compare with Fetch Reg value
+	JNZ WAITFR		;Loop again
+AFTERFR:
+	MVI B,10H		;First Leftmost 7 Segment Display .
+	MVI C,10H		;Second Leftmost 7 Segment Display .
+	MVI D,10H		;Third Leftmost 7 Segment Display .
+	MVI E,17H		;Third Righmost 7 Segment Display _
+	MVI H,17H		;Second Rightmost 7 Segment Display _
+	MVI L,17H		;First Rightmost 7 Segment Display _
+	CALL DISPLAY
+NUM1:
+	CALL KIND
+	CPI 0AH
+	JNC NUM1
+	STA 0B06H		;Store a1 at memory
+	MOV E,A
+	CALL DISPLAY
+NUM2:
+	CALL KIND
+	CPI 0AH
+	JNC NUM2
+	STA 0B07H		;Store a2 at memory 
+	MOV H,A
+	CALL DISPLAY
+NUM3:
+	CALL KIND
+	CPI 0AH
+	JNC NUM3
+	STA 0B08H		;Store a3 at memory
+	MOV L,A
+	CALL DISPLAY
+
+;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;
+MAIN:
+	CALL DISPLAY
+	CALL READK		;Check Keyboard
+	;STA 3000H
+	JMP MAIN
+
+;;;;;;;;;;;;;;
+SORT:
+	LDA 0B06H		;Load from memory a1, a2, a3
+	MOV B,A
+	LDA 0B07H
+	MOV C,A
+	LDA 0B08H
+	MOV D,A
+S1:
+	MOV A,B
+	CMP C			;Comparison a1 < a2
+	JM S2			;True
+	JMP S3			;False
+S2:
+	MOV A,C
+	CMP D			;Comparison a2 < a3
+	JM L1			;True
+	JMP S4			;False
+S3:			
+	MOV A,B
+	CMP D			;Comparison a1 < a3
+	JM L4			;True
+	JMP S5			;False
+S4:
+	MOV A,B
+	CMP D			;Comparison a1 < a3
+	JM L2			;True
+	JMP L3			;False
+S5:
+	MOV A,C
+	CMP D			;Comparison a2 < a3
+	JM L5			;True
+	JMP L6			;False
+L1:				;a1 < a2 < a3
+	MOV E,D
+	MOV H,C
+	MOV L,B
+	JMP TEL
+L2:				;a1 < a3 < a2
+	MOV E,C
+	MOV H,D
+	MOV L,B
+	JMP TEL
+L3:				;a3 < a1 < a2
+	MOV E,C
+	MOV H,B
+	MOV L,D
+	JMP TEL
+L4:				;a2 < a1 < a3
+	MOV E,D
+	MOV H,B
+	MOV L,C
+	JMP TEL
+L5:				;a2 < a3 < a1
+	MOV E,B
+	MOV H,D
+	MOV L,C
+	JMP TEL
+L6:				;a3 < a2 < a1
+	MOV E,B
+	MOV H,C
+	MOV L,D
+	JMP TEL
+TEL:
+	MVI B,10H		;3 Leftmost 7 Segments empty
+	MVI C,10H
+	MVI D,10H
+	MOV A,E		;Store a1, a2, a3 at memory
+	STA 0B06H
+	MOV A,H
+	STA 0B07H
+	MOV A,L
+	STA 0B08H
+	CALL DISPLAY
+	PUSH B
+	LXI B,001FH
+	CALL DELB
+	POP B
+	CALL READK
+	JMP SORT
+
+;;;;;;;;;;;;;;
+STATIC:
+	LDA 0B06H		;Load from memory a1, a2, a3 
+	MOV B,A
+	LDA 0B07H
+	MOV C,A
+	LDA 0B08H
+	MOV D,A
+	MVI E,10H
+	MVI H,10H
+	MVI L,10H
+	CALL DISPLAY
+	PUSH B
+	LXI B,001FH
+	CALL DELB
+	POP B
+	CALL READK
+	JMP STATIC
+
+;;;;;;;;;;;;;;
+REGRIGHT:
+	MOV A,L		;Right rotation of reg values 
+	MOV L,H
+	MOV H,E
+	MOV E,D
+	MOV D,C
+	MOV C,B
+	MOV B,A
+	CALL DISPLAY
+	PUSH B
+	LXI B,00FFH
+	CALL DELB
+	POP B
+	CALL READK
+	JMP REGRIGHT
+
+;;;;;;;;;;;;;;
+REGLEFT:			;Left rotation of reg values
+	MOV A,B
+	MOV B,C
+	MOV C,D
+	MOV D,E
+	MOV E,H
+	MOV H,L
+	MOV L,A
+	CALL DISPLAY
+	PUSH B
+	LXI B,00FFH
+	CALL DELB
+	POP B
+	CALL READK
+	JMP REGLEFT
+
+;;;;;;;;;;;;;;
+DISPLAY:
+	MOV A,B
+	STA 0B05H
+	MOV A,C
+	STA 0B04H
+	MOV A,D
+	STA 0B03H
+	MOV A,E
+	STA 0B02H
+	MOV A,H
+	STA 0B01H
+	MOV A,L
+	STA 0B00H
+	PUSH B			;Push registers
+	PUSH D
+	PUSH H
+	LXI D,0B00H 
+	CALL STDM
+	POP H			;Pop registers
+	POP D
+	POP B
+	CALL DCD
+	RET
+
+;;;;;;;;;;;;;;
+DISP_INIT:
+	MVI A,10H
+	STA 0B00H
+	STA 0B01H
+	STA 0B02H
+	STA 0B03H
+	STA 0B04H
+	STA 0B05H
+	LXI D,0B00H
+	CALL STDM
+	CALL DCD
+	RET
+
+;;;;;;;;;;;;;;
+READK:	
+	MVI A,FDH		;Check Fetch Reg line
+	STA 2800H
+	LDA 1800H
+	ANI 07H		;Keep 3 LSB only
+	CPI 05H
+	JZ PFR			;Pressed Fecth Reg
+	MVI A,7FH		;Check D line
+	STA 2800H
+	LDA 1800H
+	ANI 07H		;Keep 3 LSB only
+	CPI 06H
+	JZ PD			;Pressed D
+	MVI A,7FH		;Check F line
+	STA 2800H
+	LDA 1800H
+	ANI 07H		;Keep 3 LSB only
+	CPI 03H
+	JZ PF			;Pressed F
+	MVI A,BFH		;Check A line
+	STA 2800H
+	LDA 1800H
+	ANI 07H		;Keep 3 LSB only
+	CPI 06H
+	JZ PA			;Pressed A
+	MVI A,BFH		;Check C line
+	STA 2800H
+	LDA 1800H
+	ANI 07H		;Keep 3 LSB only
+	CPI 03H
+	JZ PC			;Pressed C
+	;MVI B,00H
+LO1:
+	RET
+PFR:
+	;MVI A,01H
+	;STA 3000H
+	JMP AFTERFR
+PD:
+	;MVI A,0DH
+	;STA 3000H
+	JMP REGRIGHT
+PF:
+	;MVI A,0FH
+	;STA 3000H
+	JMP SORT
+PA:
+	;MVI A,0AH
+	;STA 3000H
+	JMP REGLEFT
+PC:
+	;MVI A,0CH
+	;STA 3000H
+	JMP STATIC
+
+END
