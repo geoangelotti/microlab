@@ -1,0 +1,61 @@
+ARCH:
+	IN 10H
+	CALL DISP_INIT
+MAIN:
+READ_1ST:
+	CALL KIND		;Input
+	CPI 10H		;Compare Input with 16
+	JNC READ_1ST		;If Input - 15 > 0 no number loop back
+	RLC			;x2
+	RLC 			;x2
+	RLC			;x2
+	RLC			;x2
+	MOV B,A		;B = 16 * Input
+READ_2ND:
+	CALL KIND
+	CPI 10H
+	JNC READ_2ND
+	ADD B		;A = A + B
+	MOV B,A	;Store Result
+HEXTODEC:
+	MVI C,00H	;Hundreds
+	MVI D,00H	;Decades
+	MVI E,00H	;Units
+EKAT:
+	CPI 64H	;Compare Rest with 100
+	JC DEK 	;If Rest < 100 go to decades
+	SUI 64H 	;else Rest - 100
+	INR C 		;Hundreds++
+	JMP EKAT 	;Loop back
+DEK:
+	CPI 0AH 	;Compare Rest with 10
+	JC MON		;If Rest < 10 go to units
+	SUI 0AH 	;else Rest - 10
+	INR D 		;Decades++
+	JMP DEK 	;Loopback
+MON:
+	MOV E,A 	;Store Rest to Units
+DISPLAY:
+	STA 0903H 	;Display to the 3rd
+	MOV A,D 	;Load Decades
+	STA 0904H 	;Display to the 2nd
+	MOV A,C 	;Load Hundreds
+	STA 0905H 	;Display to the 1st	
+	LXI D,0900H 
+	CALL STDM
+	CALL DCD
+	JMP MAIN ;Loop back
+DISP_INIT:
+	MVI A,10H
+	STA 0900H
+	STA 0901H
+	STA 0902H
+	STA 0903H
+	STA 0904H
+	STA 0905H
+	LXI D,0900H
+	CALL STDM
+	CALL DCD
+	RET
+
+END

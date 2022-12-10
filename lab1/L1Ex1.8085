@@ -1,0 +1,59 @@
+ARCH:
+	mvi B,03H	;1 sec Delb
+	mvi C,E8H
+	mvi D,00H	;Counter
+	mvi E,00H	;Flag 0 going up, 1 going down
+CHECK:
+	LDA 2000H	;Read Dip
+	RRC		;Shift right Carry = a0
+	JNC CHECK	;Jump on 1 Carry
+DISP:
+	MOV A,D	;Load Counter
+	CMA		;Coplementary
+	STA 3000H	;Display
+	CMA		;Coplementary
+	MOV D,A	;Store Counter
+HANDLER:
+	MOV A,E	;Load flag
+	CPI 00H	;Compare Flag with 0
+	JZ UPHNDLR	;If flag == 0 go to up handler
+DOWNHNDLR:
+	MOV A,D	;Load Counter
+	CPI 00H	;Compare Counter with 0
+	JZ E2		;If counter == 0 go to E2
+	JM E2		;If Counter < 0 go to E2
+	JMP DOWN	;If Counter > 0 go to down
+E2:
+	MVI E,00H	;Flag = 0
+	MVI D,00H	;Counter = 0
+	JMP DEL
+UPHNDLR:
+	LDA 2000H	;Read Dip
+	RRC		;Shift right 4 times
+	RRC
+	RRC
+	RRC
+	ANI 0FH	;Keep 4 LSB only
+	MOV H,A	;Store Range
+	MOV A,D	;Load Counter
+	CMP H		;Compare Counter with Range
+	JZ E1		;If Counter == Range go to E1
+	JP E1		;If Counter > Range go to E1
+	JMP UP		;Counter < Range go to up
+E1:
+	MVI E,01H	;Flag = 1
+	JMP DEL
+UP:
+	MOV A,D	;Load Counter
+	INR A		;Counter++
+	MOV D,A	;Store Counter
+	JMP DEL
+DOWN:
+	MOV A,D	;Load Counter
+	DCR A		;Counter--
+	MOV D,A	;Store Counter
+	JMP DEL
+DEL:
+	CALL DELB	;Delay
+	JMP CHECK	;Loop again
+END

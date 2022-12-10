@@ -1,0 +1,89 @@
+ARCH:
+	IN 10H
+	CALL DISP_INIT
+	MVI B,00H		;Intr flag, O disabled, 1 enabled
+	MVI H,00H		;Intr Counter
+	MVI L,00H		;Led Counter
+	MVI A,0DH		;Set Intr Mask
+	SIM
+	EI
+	MVI A,00H		;PSW
+START:
+	;push psw
+	LDA 2000H		;Read Dip
+	RRC			;Rotate right, Carry = A0
+	DI			;Disable Intr
+	PUSH B			;push bc register
+	MVI B,00H
+	MVI C,64H		;Delb 0.1 sec
+	CALL DELB
+	POP B			;pop bc register
+	EI			;Enable Intr
+DISPLAY:
+	MOV A,H		;Load Intr Counter
+	STA 0900H		;Display on the rightmost position
+	LXI D,0900H 
+	PUSH PSW		;Push data
+	PUSH B
+	PUSH H
+	CALL STDM
+	POP H			;Pop data
+	POP B
+	POP PSW
+	CALL DCD
+	JNC L1			;If Carry is 1 go to
+	MVI B,01H		;Set intr to 1, enable interrupts
+
+FORWARD:
+	MOV A,L		;Load Led Counter
+	RLC			;Move it to 4 MSB
+	RLC
+	RLC
+	RLC
+	ANI F0H		;4 LSB stay off
+	CMA			;Coplementary
+	STA 3000H		;Display
+	;pop psw
+	CMA			;Coplementary
+	RRC			;Revert the number
+	RRC
+	RRC
+	RRC
+	INR A			;Led Counter++
+	MOV L,A		;Store Led Counter
+	JMP START	
+
+INTR_ROUTINE:
+	;PUSH H
+	MOV A,B		;Load intr flag
+	CPI 00H		;Compare intr with 0
+	JZ L2			;if intr is 0 go to L2 to exit
+	MVI B,00H		;Set intr flag to 0, disable interrupts
+	INR H			;Intr Counter++
+	MOV A,H		;Load Inter Counter
+	ANI 0FH		;Intr Counter mod 16
+	MOV H,A		;Store Intr Counter
+	;POP H
+	MVI B,01H		;Set intr to 1, enable interrupts
+L2:
+	EI
+	RET
+
+DISP_INIT:
+	MVI A,10H
+	STA 0900H
+	STA 0901H
+	STA 0902H
+	STA 0903H
+	STA 0904H
+	STA 0905H
+	LXI D,0900H
+	CALL STDM
+	CALL DCD
+	RET
+
+L1:
+	MVI B,00H		;Set intr flag to 0, disable interrupts
+	JMP FORWARD
+
+END

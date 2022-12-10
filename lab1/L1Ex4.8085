@@ -1,0 +1,67 @@
+ARCH:
+	IN 10H
+	MVI B,01H	;0.5 sec Delb
+	MVI C,F4H
+	MVI D,01H	;Wagon, starts at 1
+	MVI E,00H	;Direction flag, 0 up, 1 down
+	MVI A,0DH
+	SIM
+	EI		;Enable interrupts
+	MVI H,00H	;Int flag, 0 disabled, 1 enabled
+CHECK:	
+	LDA 2000H
+	RRC
+	JNC LOOPAGAIN
+	MVI H,01H	;Enable Intr lag
+	MOV A,D	;Load Wagon
+	CMA		;Coplementary
+	STA 3000H
+	DI		;disable interrupts
+	CALL DELB
+	EI		;enable interrupts	
+	MOV A,E	;Load Direction
+	CPI 00H	;Compare Direction with 0
+	JZ CHECKUP	;If Direction == 0 then check up
+CHECKDOWN:		;else check down
+	MOV A,D	;Load Wagon
+	CPI 01H	;Compare Wagon with 1
+	JNZ DOWN	;If Wagon different from 1 go down
+	MVI E,00H	;else change direction
+	JMP UP		;go up
+CHECKUP:
+	MOV A,D	;Load Wagon
+	CPI 80H	;Compare with 128
+	JNZ UP		;If Wagon different from 128 go up
+	MVI E,01H	;else change direction
+	JMP DOWN	;go down
+UP:
+	MOV A,D	;Load Wagon
+	RLC		;Left Shift
+	MOV D,A	;Store Wagon
+	JMP CHECK	
+DOWN:
+	MOV A,D	;Load Wagon
+	RRC		;Right Shift
+	MOV D,A	;Store Wagon
+	JMP CHECK
+
+INTR_ROUTINE:	
+	MOV A,H	;Load Intr flag
+	CPI 00H	;Compare flag with 0
+	JZ E2		;If flag == 0 go to E2 to exit intr routine
+	MOV A,E	;Load Direction
+	CPI 00H	;Compare Direction with 0
+	JZ E1		;If Direction  == 0 go to E1 
+	MVI E,00H	;Set Direction = 0
+	JMP E2
+E1:
+	MVI E,01H	;Set Direction = 1
+E2:
+	EI
+	RET
+
+LOOPAGAIN:
+	MVI H,00H	;Disable Intr flag
+	JMP CHECK
+END
+
